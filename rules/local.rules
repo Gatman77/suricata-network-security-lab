@@ -1,0 +1,5 @@
+alert http any any -> $HOME_NET any (msg:"Potential SQL injection"; flow: established,to_server; http.uri; content:"'"; sid:1000001; rev:1;)
+alert http any any -> $HOME_NET any (msg:"Potential SQL injection"; flow: established,to_server; http.uri; content:"union"; sid:1000002; rev:1;)
+alert http any any -> $HOME_NET any (msg:"Potential SQL injection"; flow: established,to_server; http.uri; content:"SELECT"; sid:1000003; rev:1;)
+alert http any any -> $HOME_NET any (msg:"Potential SQL injection"; flow: established,to_server; http.request_body; content:"SELECT"; nocase; sid:1000004; rev:1;)
+alert icmp any any -> 192.168.0.45 any (msg:"ICMP TEST"; itype:8; sid:1000005; rev:1;)

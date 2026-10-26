@@ -1,0 +1,13 @@
+.env
+.env.*
+!.env.example
+*.log
+*.pcap
+*.pcapng
+*.vdi
+*.vdmk
+*.vbox
+*.ova
+*.ovf
+__pycache__/
+*.pyc
