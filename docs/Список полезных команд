@@ -1,0 +1,232 @@
+
+sudo apt update
+Обновляет индекс пакетов Ubuntu.
+
+sudo apt install -y software-properties-common
+Добавляет инструменты для подключения PPA.
+
+sudo add-apt-repository -y ppa:oisf/suricata-stable
+Подключает репозиторий стабильных выпусков Suricata от OISF.
+
+sudo apt update
+sudo apt install -y suricata jq tcpdump
+Устанавливает движок Suricata, `jq` для JSON-журналов и `tcpdump` для сетевой диагностики.
+
+suricata --version
+Показывает установленную версию (в нашем стенде — 8.0.7).
+
+sudo systemctl status suricata
+sudo systemctl status suricata --no-pager
+Проверяет статус системной службы; вариант `--no-pager` выводит результат без интерактивного просмотрщика.
+
+sudo systemctl enable suricata
+sudo systemctl start suricata
+sudo systemctl stop suricata
+sudo systemctl restart suricata
+Включение при загрузке, старт, остановка и перезапуск службы. **Не запускайте параллельно ручную Suricata и systemd-службу на одном интерфейсе без необходимости.**
+
+sudo journalctl -u suricata -n 50 --no-pager
+sudo journalctl -u suricata -n 40 --no-pager
+sudo journalctl -u suricata -n 30 --no-pager
+Последние 50/40/30 строк журнала службы — диагностика старта и ошибок.
+
+
+ip -br addr
+ip -br link
+ip route
+Краткий список интерфейсов с адресами, состояния интерфейсов и таблица маршрутизации.
+
+ip route get 10.77.0.20
+ip neigh show dev eth1
+Показывает интерфейс/маршрут до третьей VM и состояние соседей ARP. `INCOMPLETE` часто сигнализирует об отсутствии канальной связности.
+
+sudo tcpdump -ni enp0s3 icmp
+sudo tcpdump -ni enp0s3 -c 10 icmp
+sudo tcpdump -ni enp0s3 'icmp and host 192.168.0.51'
+Проверяет, поступают ли ICMP-пакеты на основной интерфейс. `-n` не разрешает DNS-имена; `-i` указывает интерфейс; `-c 10` завершает захват после 10 пакетов.
+
+sudo tcpdump -ni enp0s3 -c 30
+Снимает первые 30 пакетов без фильтра протокола.
+
+
+sudo tcpdump -ni enp0s8 'icmp and host 10.77.0.20'
+Проверка видимости лабораторного трафика третьей VM на интерфейсе мониторинга Ubuntu.
+
+
+ping 192.168.0.51
+ping -c 5 192.168.0.51
+ping 192.168.0.47
+Проверка доступности хоста. Команда без `-c` выполняется до остановки `Ctrl+C`; `192.168.0.47` фигурировал как другой лабораторный узел.
+
+
+ping -I eth1 -c 5 10.77.0.20
+ping -c 5 10.77.0.10
+Проверка канала Kali ↔ третья VM именно в `LAB-NET`.
+
+---
+
+
+sudo ip link set eth1 up
+sudo ip addr add 10.77.0.10/24 dev eth1
+Поднимает  интерфейс и назначает временный адрес.
+
+
+
+
+sudo cp /etc/suricata/suricata.yaml /etc/suricata/suricata.yaml.bak
+sudo nano /etc/suricata/suricata.yaml
+Сохраняет копию YAML и открывает его для редактирования.
+
+
+sudo mkdir -p /etc/suricata/rules
+sudo nano /etc/suricata/rules/local.rules
+Создаёт каталог (если отсутствует) и открывает пользовательские правила.
+
+
+sudo cp /etc/suricata/rules/local.rules /etc/suricata/rules/local.rules.bak
+Копия пользовательских сигнатур перед экспериментами.
+
+
+sudo suricata-update
+Скачивает/собирает доступные сигнатуры (например, Emerging Threats Open).
+
+
+sudo suricata -T -c /etc/suricata/suricata.yaml
+sudo suricata -T -c /etc/suricata/suricata.yaml -v
+Тестовая загрузка YAML и правил. **`-T` не запускает захват трафика.** Дожидаться завершения команды, не ставить процесс на паузу `Ctrl+Z`.
+
+
+sudo suricata -T -c /etc/suricata/suricata.yaml -S /etc/suricata/rules/local.rules
+sudo suricata -T -c /etc/suricata/suricata.yaml -S /etc/suricata/rules/local.rules -v
+Проверка с **только указанным файлом правил** (большая `-S`). Используется при отладке собственных сигнатур.
+
+
+sudo suricata -T -c /etc/suricata/suricata.yaml -s /etc/suricata/rules/local.rules -v
+Маленькая `-s` добавляет указанные правила к правилам из YAML. Это не то же самое, что `-S`.
+
+
+sudo suricata -c /etc/suricata/suricata.yaml -i enp0s3
+sudo suricata -c /etc/suricata/suricata.yaml -S /etc/suricata/rules/local.rules -i enp0s3 -v
+Ручной запуск захвата с интерфейса `enp0s3`; второй вариант использует только собственные правила. Сначала `sudo systemctl stop suricata`, чтобы не дублировать службу. Выход `Ctrl+C`, после теста вернуть `sudo systemctl start suricata`.
+
+
+sudo systemctl show suricata -p ExecStart
+sudo grep -A 12 '^af-packet:' /etc/suricata/suricata.yaml
+sudo grep -A 8 '^af-packet:' /etc/suricata/suricata.yaml
+Проверяет фактический запуск службы и конфигурацию интерфейсов для AF_PACKET.
+
+
+sudo grep -A 8 '^rule-files:' /etc/suricata/suricata.yaml
+sudo grep -A 6 '^rule-files:' /etc/suricata/suricata.yaml
+sudo grep -A 5 '^rule-files:' /etc/suricata/suricata.yaml
+sudo grep -n 'local.rules' /etc/suricata/suricata.yaml
+sudo grep -A 5 'address-groups:' /etc/suricata/suricata.yaml
+sudo grep -n 'interface:' /etc/suricata/suricata.yaml
+Диагностика включения собственных правил, `HOME_NET`, интерфейсов. `-A N` печатает N строк после совпадения.
+
+
+sudo suricata -T -c /etc/suricata/suricata.yaml -v 2>&1 | grep -Ei 'signature|rules|error|warning'
+Выводит только ключевые диагностические строки проверки; при спорном результате запускать и полную версию без `grep`.
+
+
+sudo grep -n 'sid:1000001' /etc/suricata/rules/local.rules
+sudo cat -n /etc/suricata/rules/local.rules
+sudo cat /etc/suricata/rules/local.rules
+sudo cat -A /etc/suricata/rules/local.rules
+sudo ls -l /etc/suricata/rules/local.rules
+Проверяет наличие SID, содержимое, скрытые символы и реальное существование/права файла. `No rule files match the pattern` означает, что файл по пути не найден или не совпал с шаблоном (не следует объяснять это лишь разницей `-s`/`-S`).
+
+
+sudo tail -f /var/log/suricata/fast.log
+sudo tail -F /var/log/suricata/fast.log
+sudo tail -n 0 -F /var/log/suricata/fast.log
+sudo tail -n 10 /var/log/suricata/fast.log
+sudo tail -n 20 /var/log/suricata/fast.log
+Просмотр коротких алертов. `-f` следит за файлом, `-F` переживает его переименование/ротацию, `-n 0` показывает только **новые** записи, `-n 10/20` — последние 10/20.
+
+
+sudo tail -f /var/log/suricata/eve.json
+sudo tail -f /var/log/suricata/eve.json | jq --unbuffered 'select(.event_type=="alert")'
+Вывод всех JSON-событий либо только алертов.
+
+
+sudo tail -F /var/log/suricata/eve.json | jq --unbuffered -c 'select(.event_type=="alert") | {time: .timestamp, src: .src_ip, dst: .dest_ip, signature: .alert.signature, sid: .alert.signature_id, severity: .alert.severity}'
+Вывод удобной сводки: время, источник, назначение, название, SID и приоритет.
+
+
+sudo grep '"signature_id":1000001' /var/log/suricata/eve.json | tail -5
+Поиск конкретного SID в JSON. Если файл форматируется с пробелами, надёжнее использовать `jq`.
+
+
+sudo tail -n 1000 /var/log/suricata/eve.json | jq -c 'select(.event_type=="alert" and (.alert.signature_id == 1000001 or .alert.signature_id == 1000002 or .alert.signature_id == 1000003)) | {sid: .alert.signature_id, signature: .alert.signature}'
+Проверяет, были ли среди последних 1000 событий алерты трёх выбранных SQLi-правил.
+
+
+sudo tail -n 80 /var/log/suricata/stats.log
+sudo grep -E 'capture.kernel_packets|decoder.pkts|detect.alert' /var/log/suricata/stats.log | tail -15
+Статистика обработанных пакетов и алертов. Помогает отличить отсутствие трафика от отсутствия совпадений с правилами.
+
+
+python3 -m http.server 8080 --bind 192.168.0.51
+Временный HTTP-сервер Python на порту 8080 (команда выполняется на Ubuntu, если IP принадлежит ей). Оставить терминал запущенным на время теста, закрыть `Ctrl+C`.
+
+
+sudo ss -lntp | grep 8080
+sudo ufw status
+Проверка прослушивания TCP/8080 и состояния UFW.
+
+
+sudo ufw allow from 192.168.0.45 to any port 8080 proto tcp
+При активном UFW разрешает доступ к тестовому веб-серверу только с Kali. Это изменение правила firewall, после лабораторной проверки его следует удалить при ненадобности.
+
+
+curl -v http://192.168.0.51:8080/
+curl "http://192.168.0.51:8080/?q=union"
+curl "http://192.168.0.51:8080/?q=select"
+Тест TCP/HTTP и генерация URL с `union`/`select`, которые должны совпадать с соответствующими учебными правилами — **только если Suricata реально видит этот интерфейс/поток**.
+
+
+
+git clone https://github.com/bugourmet/suricata-alerts
+cd suricata-alerts
+Клонирует проект и переходит в него (если уже клонирован — повторно не нужно).
+
+
+pip install -r requirements.txt
+Устанавливает Python-зависимости; предпочтительно внутри virtualenv для изоляции, если проект ещё не настроен.
+
+
+cp .env.sample .env
+nano .env
+Создаёт рабочую конфигурацию из примера и открывает её. **Токен бота нельзя публиковать**.
+
+
+cd ~/suricata-alerts
+python3 monitor.py
+Запускает наблюдатель, читающий `eve.json` и отправляющий выбранные алерты в Telegram. Остановить `Ctrl+C`.
+
+
+
+
+
+grep -nE 'load_dotenv|os.getenv|bot_token' ~/suricata-alerts/monitor.py
+grep -nE 'allowed_user_ids|ALLOWED_USER_IDS|send_message' ~/suricata-alerts/monitor.py
+Проверяет, какие переменные окружения и адресаты используются скриптом. В **нашем реальном коде** ключи назывались `BOT_TOKEN`, `USERS`, `ATTACK_IDS`, `IGNORED_ATTACK_IDS`, `PRIORITY`. Не путать их с названиями из чужих инструкций.
+
+
+ls -la .env*
+Проверяет наличие `.env` и `.env.sample`.
+
+
+ls -l /var/log/suricata/eve.json
+ls -ld /var/log/suricata
+namei -l /var/log/suricata/eve.json
+Проверяет права самого журнала и всех каталогов пути.
+
+
+sudo apt install -y acl
+sudo setfacl -m u:security:--x /var/log/suricata
+sudo setfacl -m u:security:r-- /var/log/suricata/eve.json
+Доступ на проход к каталогу и чтение файла только пользователю `security` без запуска бота от `root`.
+
+
